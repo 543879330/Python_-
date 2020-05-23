@@ -1,0 +1,153 @@
+import requests
+from selenium import webdriver
+import time
+import json
+from gevent import monkey
+from bs4 import BeautifulSoup
+from concurrent.futures import ThreadPoolExecutor,ProcessPoolExecutor
+import threading
+import os
+import smtplib
+from email.mime.text import MIMEText
+#发送字符串的邮件
+from email.mime.multipart import MIMEMultipart
+#处理多种形态的邮件主体我们需要 MIMEMultipart 类
+from email.mime.application import MIMEApplication
+#最懒的方法，不管什么类型的附件，都用MIMEApplication
+import schedule    #定义计时模块
+
+
+#1、自动输入账号密码，登录网页，发表评论，带参数请求发送；
+def comment():
+    session = requests.session()
+    #用requests.session()创建session对象，相当于创建了一个特定的会话，帮我们自动保持了cookies。
+    url='https://wordpress-edu-3autumn.localprod.oc.forchange.cn/wp-login.php'
+    headers={
+        'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.86 Safari/537.36'
+    }
+    data={
+    'log':'spiderman',         #input('请输入账号： '),  #使用input填写账号和密码
+    'pwd':'crawler334566',         #input('请输入密码： '),
+    'wp-submit':' 登录',
+    'redirect_to':' https://wordpress-edu-3autumn.localprod.oc.forchange.cn',
+    'testcookie':' 1',
+    }
+    session.post(url,headers=headers,data=data)
+    #在创建的session下用post发起登录请求，放入参数、请求登录的网址、请求头和登录参数。
+
+    url_1='https://wordpress-edu-3autumn.localprod.oc.forchange.cn/wp-comments-post.php'
+    data_1 = {
+    'comment':'测试1111111123431113123',   #input('请输入你想要发表的评论： '),
+    'submit':'发表评论',
+    'comment_post_ID':'23',
+    'comment_parent':'0',
+    }
+    #把有关评论的参数封装成字典。
+    comment = session.post(url_1,headers=headers,data=data_1)
+    #在创建的session下用post发起评论请求，放入参数：文章网址，请求头和评论参数，并赋值给comment
+    print(comment)    #打印comment
+
+
+#2、使用多进程或多线程，爬取豆瓣电影排行榜，获取所有分页数据,将爬取到的内容写入文件；
+def getPage(url):
+    '''请求页面数据'''
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.86 Safari/537.36'
+    }
+    # 发起请求
+    res = requests.get(url,headers=headers)
+    #判断响应状态
+    if res.status_code ==200:
+        return res.text
+    else:
+        return None
+
+def parsePage(html):
+    '''解析页面数据'''
+    soup=BeautifulSoup(html,'html.parser')
+    items = soup.find_all(class_="item")
+    # 遍历封装数据并返回
+    for item in items:
+
+        res = {
+            'index':item.find(class_="pic").find(class_="").text,
+            'title':item.find(class_="hd").find(class_="title").text,
+            'actor':item.find(class_="bd").find(class_="").text,
+            'score':item.find(class_="star").find(class_="rating_num").text,
+        }
+        yield res
+
+
+def writeFile(item):
+    '''写入数据'''
+    with open('./douban.txt','a',encoding='utf-8') as fp:    #   './douban.json'
+        fp.write(json.dumps(item,ensure_ascii=False))
+        fp.write('\n')
+
+def send_email():
+    '''使用SMTP发送邮件给自己'''
+    # 设置服务器所需信息
+    fromaddr = '543879330@qq.com'  # 邮件发送方邮箱地址
+    password = 'lbohovbziuyfbebb'  # 密码(部分邮箱为授权码)
+    toaddrs = ['543879330@qq.com']  # 邮件接受方邮箱地址，注意需要[]包裹，这意味着你可以写多个邮件地址群发
+
+    content = '这是一个带附件的测试邮件.'
+    textApart = MIMEText(content)
+    txtFile = 'douban.txt'
+    txtApart = MIMEApplication(open(txtFile, 'rb').read())
+    txtApart.add_header('Content-Disposition', 'attachment', filename=txtFile)
+
+    m = MIMEMultipart()
+    m.attach(textApart)   #attach 附加
+    m.attach(txtApart)
+    m['Subject'] = 'title'
+
+    # 登录并发送邮件
+    try:
+        server = smtplib.SMTP('smtp.qq.com')  # qq邮箱服务器地址，端口默认为25
+        server.login(fromaddr, password)
+        server.sendmail(fromaddr, toaddrs, m.as_string())
+        print('success')
+        server.quit()
+    except smtplib.SMTPException as e:
+        print('error:', e)  # 打印错误
+
+def spider(offset):
+    '''调用爬虫程序'''
+    url =f'https://movie.douban.com/top250?start={offset}'
+    # 调用函数进行页面的爬取
+    html = getPage(url)
+    print(f'正在解析url:{url}')
+    if html:
+        # 解析页面数据 parsePage(html)
+         for item in parsePage(html):
+             print(f'正在写入数据{item["title"]}')
+            # print(f'线程号：{threading.current_thread()}')
+             # 写入数据
+             writeFile(item)
+
+def main():
+    '''主函数，包含所有要执行的功能'''
+    start = time.time()  # 计时
+    comment()  # 在网站上发表评论
+    # 定义线程池ThreadPoolExecutor或进程池ProcessPoolExecutor
+    pool = ThreadPoolExecutor(max_workers=5)
+    for i in range(10):
+        pool.submit(spider, i * 25)  # (要执行的函数，传入的参数)
+        # main(offset=i*25)
+        time.sleep(2)
+    # 关闭线程池或进程池
+    pool.shutdown()
+
+    '''使用SMTP,登录QQ邮箱，将文件发送给自己。'''
+    send_email()
+
+    end = time.time()  # 计时
+    print(end - start)  # 比单进程快
+
+if __name__ == '__main__':
+   schedule.every().day.at("16:06").do(main)    #部署在每天的什么时间执行一次main函数的任务
+
+   while True:
+       schedule.run_pending()
+       time.sleep(1)
