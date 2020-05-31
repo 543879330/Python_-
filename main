@@ -15,7 +15,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
 #最懒的方法，不管什么类型的附件，都用MIMEApplication
 import schedule    #定义计时模块
-
+import page_object   #selenium  page_object模式发送邮件
 
 #1、自动输入账号密码，登录网页，发表评论，带参数请求发送；
 def comment():
@@ -87,9 +87,9 @@ def writeFile(item):
 def send_email():
     '''使用SMTP发送邮件给自己'''
     # 设置服务器所需信息
-    fromaddr = '543879330@qq.com'  # 邮件发送方邮箱地址
-    password = 'lbohovbziuyfbebb'  # 密码(部分邮箱为授权码)
-    toaddrs = ['543879330@qq.com']  # 邮件接受方邮箱地址，注意需要[]包裹，这意味着你可以写多个邮件地址群发
+    fromaddr = '*********@qq.com'  # 邮件发送方邮箱地址
+    password = '******************'  # 密码(部分邮箱为授权码)
+    toaddrs = ['*********@qq.com']  # 邮件接受方邮箱地址，注意需要[]包裹，这意味着你可以写多个邮件地址群发
 
     content = '这是一个带附件的测试邮件.'
     textApart = MIMEText(content)
@@ -141,6 +141,8 @@ def main():
 
     '''使用SMTP,登录QQ邮箱，将文件发送给自己。'''
     send_email()
+    '''使用selenium的page object设计模式模拟手动登录邮箱，发送邮件给自己。'''
+    page_object.send_email_2()
 
     end = time.time()  # 计时
     print(end - start)  # 比单进程快
