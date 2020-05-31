@@ -1,0 +1,120 @@
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from time import sleep
+
+#创建基础类
+class BasePage(object):
+    #初始化
+    def __init__(self, driver):
+        self.base_url = 'https://mail.qq.com/'
+        self.driver = driver
+        self.timeout = 30
+
+    #定义打开登录页面方法
+    def _open(self):
+        url = self.base_url
+        self.driver.get(url)
+        self.driver.switch_to.frame('login_frame')  #切换到登录窗口的iframe
+
+    #定义定义open方法，调用_open()进行打开
+    def open(self):
+        self._open()
+
+    #定位方法封装
+    def find_element(self,*loc):
+        return self.driver.find_element(*loc)
+
+#创建LoginPage类
+class LoginPage(BasePage):
+    username_loc = (By.ID, "u")
+    password_loc = (By.ID, "p")
+    login_loc = (By.ID, "login_button")
+
+    #输入用户名
+    def type_username(self,username):
+        self.find_element(*self.username_loc).clear()
+        self.find_element(*self.username_loc).send_keys(username)
+
+    #输入密码
+    def type_password(self,password):
+        self.find_element(*self.password_loc).send_keys(password)
+
+    #点击登录
+    def type_login(self):
+        self.find_element(*self.login_loc).click()
+
+#创建test_user_login()函数
+def test_user_login(driver, username, password):
+    """测试用户名/密码是否可以登录"""
+    login_page = LoginPage(driver)
+    login_page.open()
+    login_page.type_username(username)
+    login_page.type_password(password)
+    login_page.type_login()
+
+#创建test_write_send()函数
+def test_write_send(_driver, _receiverAddress, _subjectString, _contentString):
+    _driver.switch_to_default_content()
+    writeLink = _driver.find_element_by_link_text("写信");
+    writeLink.click();
+    sleep(3)
+    # 切换到写信框架
+    _driver.switch_to_frame("mainFrame");
+    # 收信人信息
+    toUser = _driver.find_element_by_xpath(".//*[@id='toAreaCtrl']/div[2]/input");
+    toUser.send_keys(_receiverAddress)
+    sleep(3)
+    # 邮件主题信息
+    title = _driver.find_element_by_id("subject");
+    title.send_keys(_subjectString);
+    sleep(3)
+    # 邮件正文信息
+    _driver.switch_to_frame(_driver.find_element_by_tag_name("iframe"));
+    content = _driver.find_element_by_tag_name("body");
+    content.send_keys(_contentString);
+    sleep(3)
+    # 送信按钮触发
+    _driver.switch_to.parent_frame();
+    sendButton = _driver.find_element_by_link_text("发送");
+    sendButton.click();
+    print("邮件内容已经填写完毕并触发“发送按钮”")
+    _driver.implicitly_wait(5)
+
+# 函数名称      LogoutFun(_driver)直接关闭浏览器退出
+# 函数功能：   实现退出操作，原来发送邮件后页面自动跳转，想定位到退出按钮失败，还是太年轻了
+# 输入参数：   _driver：webdirver模块初始化Firfox对象？
+# 输出参数：   无
+
+#创建test_user_logout()函数
+def test_user_logout(_driver):
+    # 退出操作
+    # driver.switch_to_frame("actionFrame")
+    # logoutLink = driver.find_element_by_link_text("退出");
+    # logoutLink.click()
+    # time.sleep(3)
+    print("最后退出邮件")
+    # 按照顺序来的，应该不用定义函数了吧
+    _driver.close()
+
+#创建main()函数
+def send_email_2():
+    driver = webdriver.Firefox() #打开Firefox\Edge\Chrome浏览器
+    username = '***********'    #qq号码
+    password = '***********'    #qq密码
+    receiverAddress = "***********"    #接受者的邮箱
+    subjectString = "selenium+python自动化测试"   #邮件主题
+    contentString = "这是邮件正文，测试，测试"    #邮件正文
+    # 调用登陆操作子函数
+    test_user_login(driver, username, password)
+    sleep(3)
+    # 调用写信与发送操作子函数
+    test_write_send(driver, receiverAddress, subjectString, contentString)
+    sleep(3)
+    # 最后调用退出操作子函数
+    test_user_logout(driver)
+    sleep(3)
+
+    # driver.quit()
+
+if __name__ == '__main__':
+    send_email_2()
