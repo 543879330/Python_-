@@ -1,3 +1,13 @@
+'''
+爬虫项目要求：
+1、使用定时功能，在特定的时间自动执行下述任务；
+2、自动输入账号密码，登录网页，发表评论，带参数请求发送；
+3、使用多进程或多线程，爬取豆瓣电影排行榜，获取所有分页数据；
+4、将爬取到的内容写入文件；
+5、使用Selenium控制浏览器，做出自动打开、输入、点击等操作,登录QQ邮箱，将文件发送出去。
+6、 #测试目标网站的连通度，也测试本地到目标站的网速。
+'''
+
 import requests
 from selenium import webdriver
 import time
@@ -16,6 +26,7 @@ from email.mime.application import MIMEApplication
 #最懒的方法，不管什么类型的附件，都用MIMEApplication
 import schedule    #定义计时模块
 import page_object   #selenium  page_object模式发送邮件
+import subprocess    #测试目标网站的连通度，也测试本地到目标站的网速。
 
 #1、自动输入账号密码，登录网页，发表评论，带参数请求发送；
 def comment():
@@ -84,12 +95,28 @@ def writeFile(item):
         fp.write(json.dumps(item,ensure_ascii=False))
         fp.write('\n')
 
+def get_ping_result(ip_address):
+    '''
+    测试目标网站的连通度，也测试本地到目标站的网速。
+    :param ip_address: ping ip_address
+    :return:
+    '''
+    p = subprocess.Popen(["ping.exe", ip_address],
+                         stdin=subprocess.PIPE,
+                         stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE,
+                         shell=True)
+    # 在Windows上需要用gbk解码，python默认utf-8，会出现乱码
+    cmdOut = p.stdout.read().decode('gbk')
+    print(cmdOut)
+
+
 def send_email():
     '''使用SMTP发送邮件给自己'''
     # 设置服务器所需信息
-    fromaddr = '*********@qq.com'  # 邮件发送方邮箱地址
-    password = '******************'  # 密码(部分邮箱为授权码)
-    toaddrs = ['*********@qq.com']  # 邮件接受方邮箱地址，注意需要[]包裹，这意味着你可以写多个邮件地址群发
+    fromaddr = '543879330@qq.com'  # 邮件发送方邮箱地址
+    password = 'voebvugyjtplbegb'  # 密码(部分邮箱为授权码)
+    toaddrs = ['543879330@qq.com']  # 邮件接受方邮箱地址，注意需要[]包裹，这意味着你可以写多个邮件地址群发
 
     content = '这是一个带附件的测试邮件.'
     textApart = MIMEText(content)
@@ -130,6 +157,8 @@ def main():
     '''主函数，包含所有要执行的功能'''
     start = time.time()  # 计时
     comment()  # 在网站上发表评论
+    ip_address='movie.douban.com'
+    get_ping_result(ip_address)   #测试目标网站的连通度，也测试本地到目标站的网速。
     # 定义线程池ThreadPoolExecutor或进程池ProcessPoolExecutor
     pool = ThreadPoolExecutor(max_workers=5)
     for i in range(10):
@@ -148,8 +177,10 @@ def main():
     print(end - start)  # 比单进程快
 
 if __name__ == '__main__':
-   schedule.every().day.at("16:06").do(main)    #部署在每天的什么时间执行一次main函数的任务
+    main()
 
-   while True:
-       schedule.run_pending()
-       time.sleep(1)
+    '''schedule.every().day.at("14:53").do(main)    #部署在每天的什么时间执行一次main函数的任务
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
+    '''
